@@ -1,0 +1,413 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Jannat Galaktikasi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,500&family=Manrope:wght@500;700&display=swap">
+<style>
+  /* Layout: full-screen WebGL particle field; caption typed above one pill button; particles morph galaxy -> heart -> star -> heart -> infinity -> words. */
+  :root {
+    --bg: #07040c;
+    --fg: #f6e9ee;
+    --muted: #b39aa8;
+    --stage: #ff8a3d;
+    --glass: rgba(20, 10, 28, 0.55);
+    --display: "Playfair Display", Georgia, serif;
+    --body: "Manrope", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--body);
+    overflow: hidden;
+  }
+  #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  .brand {
+    position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px));
+    font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); pointer-events: none;
+  }
+  .ui {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    padding-top: 16px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    pointer-events: none;
+  }
+  .cap {
+    margin: 0; min-height: 3.4em; max-width: 30ch;
+    font: italic 500 clamp(19px, 5vw, 26px)/1.35 var(--display);
+    text-align: center; text-wrap: balance;
+    color: #fff3f6;
+    text-shadow: 0 0 14px var(--stage), 0 0 32px var(--stage);
+  }
+  .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  button {
+    pointer-events: auto;
+    font: 700 15px/1 var(--body);
+    color: var(--fg);
+    background: var(--glass);
+    border: 1px solid var(--stage);
+    border-radius: 999px;
+    padding: 14px 26px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background .25s, border-color .4s;
+  }
+  button.ghost { font-weight: 500; font-size: 13px; padding: 14px 18px; border-color: rgba(255,255,255,.2); color: var(--muted); }
+  button:hover { background: rgba(255, 79, 135, .25); }
+  button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+</style>
+
+<canvas id="stage" aria-label="3D zarrachalar galaktikasi"></canvas>
+<div class="brand">Jannat iforligim</div>
+<div class="ui">
+  <p class="cap" id="cap" aria-live="polite"></p>
+  <div class="row">
+    <button id="home" class="ghost" type="button" hidden>Galaktikaga qaytish</button>
+    <button id="go" type="button">Ichiga kirish</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var N = 60000;
+  var canvas = document.getElementById('stage');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  var PR = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(PR);
+  renderer.setClearColor(0x07040c, 1);
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(60, 1, 0.05, 200);
+  var group = new THREE.Group();
+  scene.add(group);
+
+  function g() { return (Math.random() + Math.random() + Math.random() - 1.5) / 1.5; }
+
+  /* ---------- Target builders ---------- */
+  function galaxyTarget() {
+    var pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    var R = 7, B = 3, SPIN = 1.3, RND = 0.38, POW = 3.2;
+    var ci = new THREE.Color('#ffb347'), co = new THREE.Color('#c2185b'), c = new THREE.Color();
+    for (var i = 0; i < N; i++) {
+      var r = Math.pow(Math.random(), 1.4) * R;
+      var a = ((i % B) / B) * Math.PI * 2 + r * SPIN;
+      var rn = function () { return Math.pow(Math.random(), POW) * (Math.random() < 0.5 ? 1 : -1) * RND * r; };
+      pos[i * 3] = Math.cos(a) * r + rn();
+      pos[i * 3 + 1] = rn() * 0.55;
+      pos[i * 3 + 2] = Math.sin(a) * r + rn();
+      c.copy(ci).lerp(co, r / R);
+      col[i * 3] = c.r * 1.3; col[i * 3 + 1] = c.g * 1.3; col[i * 3 + 2] = c.b * 1.3;
+    }
+    return { pos: pos, col: col };
+  }
+
+  function outlineTarget(path, cA, cB) {
+    var pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    var A = new THREE.Color(cA), Bc = new THREE.Color(cB), c = new THREE.Color();
+    for (var i = 0; i < N; i++) {
+      var k = (Math.random() * path.length) | 0, p = path[k], r = Math.random(), j, inten, zj;
+      if (r < 0.74) { j = 0.012; inten = 1.5; zj = 0.16; }
+      else if (r < 0.93) { j = 0.05 + Math.random() * 0.16; inten = 0.8; zj = 0.3; }
+      else { j = 0.3 + Math.random() * 0.7; inten = 0.5; zj = 0.8; }
+      pos[i * 3] = p[0] + g() * j;
+      pos[i * 3 + 1] = p[1] + g() * j;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * zj;
+      c.copy(A).lerp(Bc, k / path.length);
+      col[i * 3] = c.r * inten; col[i * 3 + 1] = c.g * inten; col[i * 3 + 2] = c.b * inten;
+    }
+    return { pos: pos, col: col };
+  }
+
+  function heartPath() {
+    var out = [], s = 0.105;
+    for (var i = 0; i < 6000; i++) {
+      var t = (i / 6000) * Math.PI * 2;
+      var x = 16 * Math.pow(Math.sin(t), 3);
+      var y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      out.push([x * s, (y + 2.5) * s]);
+    }
+    return out;
+  }
+  function starPath() {
+    var v = [], out = [], k;
+    for (k = 0; k < 10; k++) {
+      var a = Math.PI / 2 + k * Math.PI / 5, rad = k % 2 === 0 ? 1.95 : 0.78;
+      v.push([Math.cos(a) * rad, Math.sin(a) * rad + 0.05]);
+    }
+    for (k = 0; k < 10; k++) {
+      var p = v[k], q = v[(k + 1) % 10];
+      for (var s = 0; s < 400; s++) { var u = s / 400; out.push([p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u]); }
+    }
+    return out;
+  }
+  function infinityPath() {
+    var out = [], a = 2.0;
+    for (var i = 0; i < 6000; i++) {
+      var t = (i / 6000) * Math.PI * 2, d = 1 + Math.sin(t) * Math.sin(t);
+      out.push([a * Math.cos(t) / d, 1.25 * a * Math.sin(t) * Math.cos(t) / d]);
+    }
+    return out;
+  }
+
+  function textTarget() {
+    var W = 1200, H = 420, cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var x = cv.getContext('2d');
+    x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = 'italic 500 124px "Playfair Display", Georgia, serif';
+    x.fillText('Jannat iforligim', W / 2, 135);
+    x.fillText('men seni sevaman', W / 2, 285);
+    var d = x.getImageData(0, 0, W, H).data, pts = [];
+    for (var py = 0; py < H; py++) for (var px = 0; px < W; px++) if (d[(py * W + px) * 4 + 3] > 128) pts.push(px, py);
+    if (!pts.length) return outlineTarget(heartPath(), '#ffd6e4', '#ff4f87');
+    var cnt = pts.length / 2, sc = 3.9 / W;
+    var pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    var A = new THREE.Color('#fff0f4'), Bc = new THREE.Color('#ff5c93'), c = new THREE.Color();
+    for (var i = 0; i < N; i++) {
+      var k = (Math.random() * cnt) | 0, ppx = pts[k * 2], ppy = pts[k * 2 + 1];
+      pos[i * 3] = (ppx - W / 2) * sc + g() * 0.006;
+      pos[i * 3 + 1] = (H / 2 - ppy) * sc + 0.15 + g() * 0.006;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 0.12;
+      c.copy(A).lerp(Bc, ppy / H);
+      var it = 1.3;
+      col[i * 3] = c.r * it; col[i * 3 + 1] = c.g * it; col[i * 3 + 2] = c.b * it;
+    }
+    return { pos: pos, col: col };
+  }
+
+  /* ---------- Morphing particle system ---------- */
+  var targets = {};
+  var geo = new THREE.BufferGeometry();
+  var aPos = new THREE.BufferAttribute(new Float32Array(N * 3), 3);
+  var aTo = new THREE.BufferAttribute(new Float32Array(N * 3), 3);
+  var aCFrom = new THREE.BufferAttribute(new Float32Array(N * 3), 3);
+  var aCTo = new THREE.BufferAttribute(new Float32Array(N * 3), 3);
+  var rnd = new Float32Array(N);
+  for (var i = 0; i < N; i++) rnd[i] = Math.random();
+  geo.setAttribute('position', aPos);
+  geo.setAttribute('aTo', aTo);
+  geo.setAttribute('aCFrom', aCFrom);
+  geo.setAttribute('aCTo', aCTo);
+  geo.setAttribute('aRand', new THREE.BufferAttribute(rnd, 1));
+
+  var uni = {
+    uMix: { value: 1 }, uSize: { value: 0.03 }, uPR: { value: PR }, uH: { value: 800 }, uTime: { value: 0 }
+  };
+  var mat = new THREE.ShaderMaterial({
+    uniforms: uni, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: [
+      'attribute vec3 aTo; attribute vec3 aCFrom; attribute vec3 aCTo; attribute float aRand;',
+      'uniform float uMix, uSize, uPR, uH, uTime;',
+      'varying vec3 vColor;',
+      'void main(){',
+      '  float t = clamp((uMix - aRand * 0.45) / 0.55, 0.0, 1.0);',
+      '  float e = t * t * (3.0 - 2.0 * t);',
+      '  vec3 p = mix(position, aTo, e);',
+      '  p.z += sin(e * 3.14159) * (aRand - 0.5) * 4.0;',
+      '  p.x += sin(e * 3.14159) * (fract(aRand * 7.0) - 0.5) * 2.0;',
+      '  p += 0.012 * vec3(sin(uTime * 1.3 + aRand * 60.0), cos(uTime * 1.1 + aRand * 40.0), sin(uTime * 0.9 + aRand * 20.0));',
+      '  vColor = mix(aCFrom, aCTo, e) * (0.8 + 0.3 * sin(uTime * 2.0 + aRand * 30.0));',
+      '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+      '  gl_Position = projectionMatrix * mv;',
+      '  gl_PointSize = max(uSize * uPR * uH * 0.5 / -mv.z * (0.75 + 0.5 * aRand), 1.4);',
+      '}'
+    ].join('\n'),
+    fragmentShader: [
+      'varying vec3 vColor;',
+      'void main(){',
+      '  float d = length(gl_PointCoord - 0.5) * 2.0;',
+      '  if (d > 1.0) discard;',
+      '  float a = pow(1.0 - d, 1.6);',
+      '  gl_FragColor = vec4(vColor, a);',
+      '}'
+    ].join('\n')
+  });
+  var points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  group.add(points);
+
+  var cur = 'galaxy', mix = 1, building = {};
+  function getTarget(key) {
+    if (targets[key]) return targets[key];
+    var t;
+    if (key === 'galaxy') t = galaxyTarget();
+    else if (key === 'heart1') t = outlineTarget(heartPath(), '#8a4dff', '#ff7bd5');
+    else if (key === 'star') t = outlineTarget(starPath(), '#3dff8f', '#c8ffa0');
+    else if (key === 'heart2') t = outlineTarget(heartPath(), '#ffb000', '#ff4a1c');
+    else if (key === 'infinity') t = outlineTarget(infinityPath(), '#ff4f87', '#ffb0cf');
+    else if (key === 'words') t = textTarget();
+    targets[key] = t;
+    return t;
+  }
+  function bake() {
+    var P = aPos.array, T = aTo.array, CF = aCFrom.array, CT = aCTo.array;
+    for (var i = 0; i < N; i++) {
+      var t = Math.min(1, Math.max(0, (mix - rnd[i] * 0.45) / 0.55)), e = t * t * (3 - 2 * t);
+      for (var k = 0; k < 3; k++) {
+        var j = i * 3 + k;
+        P[j] = P[j] + (T[j] - P[j]) * e;
+        CF[j] = CF[j] + (CT[j] - CF[j]) * e;
+      }
+    }
+  }
+  function morphTo(key) {
+    if (key === cur) return;
+    bake();
+    var t = getTarget(key);
+    aTo.array.set(t.pos); aCTo.array.set(t.col);
+    aPos.needsUpdate = true; aTo.needsUpdate = true; aCFrom.needsUpdate = true; aCTo.needsUpdate = true;
+    mix = 0; cur = key;
+  }
+  (function init() {
+    var t = getTarget('galaxy');
+    aPos.array.set(t.pos); aTo.array.set(t.pos); aCFrom.array.set(t.col); aCTo.array.set(t.col);
+  })();
+
+  /* Background stars */
+  var sp = new Float32Array(2500 * 3);
+  for (var s = 0; s < 2500; s++) {
+    var v = new THREE.Vector3(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().multiplyScalar(40 + Math.random() * 40);
+    sp[s * 3] = v.x; sp[s * 3 + 1] = v.y; sp[s * 3 + 2] = v.z;
+  }
+  var sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.12, color: 0xffe9f0, transparent: true, opacity: 0.55, depthWrite: false })));
+
+  /* ---------- Core text sprite (inside the galaxy) ---------- */
+  var textMat = new THREE.SpriteMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false });
+  var sprite = new THREE.Sprite(textMat); sprite.scale.set(3.2, 1.6, 1); sprite.renderOrder = 10; scene.add(sprite);
+  var glowMat = new THREE.SpriteMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending });
+  var glow = new THREE.Sprite(glowMat); glow.scale.set(5, 5, 1); glow.renderOrder = 9; scene.add(glow);
+
+  function drawText() {
+    var cv = document.createElement('canvas'); cv.width = 1024; cv.height = 512;
+    var x = cv.getContext('2d');
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.shadowColor = 'rgba(255,90,140,0.95)'; x.shadowBlur = 38; x.fillStyle = '#fff3f6';
+    x.font = 'italic 500 104px "Playfair Display", Georgia, serif';
+    x.fillText('Jannat iforligim', 512, 170);
+    x.fillText('men seni sevaman', 512, 290);
+    x.shadowBlur = 0;
+    x.font = '110px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+    x.fillText('🌹', 512, 415);
+    var tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter;
+    textMat.map = tex; textMat.needsUpdate = true;
+    var gc = document.createElement('canvas'); gc.width = gc.height = 256;
+    var gg = gc.getContext('2d'), gr = gg.createRadialGradient(128, 128, 0, 128, 128, 128);
+    gr.addColorStop(0, 'rgba(255,120,150,0.55)'); gr.addColorStop(0.5, 'rgba(255,90,60,0.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    gg.fillStyle = gr; gg.fillRect(0, 0, 256, 256);
+    glowMat.map = new THREE.CanvasTexture(gc); glowMat.needsUpdate = true;
+  }
+  drawText();
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('italic 500 40px "Playfair Display"').then(function () { drawText(); delete targets.words; if (cur === 'words') { cur = ''; morphTo('words'); } }).catch(function () {});
+  }
+
+  /* ---------- Stages ---------- */
+  var stages = [
+    { key: 'galaxy', cam: 'far', color: '#ff8a3d', btn: 'Ichiga kirish', cap: '' },
+    { key: 'galaxy', cam: 'in', color: '#ff4f87', btn: 'Davom etish', cap: '' },
+    { key: 'heart1', cam: 'shape', color: '#a56bff', btn: 'Keyingisi', cap: 'Sen mening yuragimning egasisan, Jannat iforligim 💜' },
+    { key: 'star', cam: 'shape', color: '#3dff8f', btn: 'Keyingisi', cap: 'Sen mening osmonimdagi eng yorqin yulduzsan ✨' },
+    { key: 'heart2', cam: 'shape', color: '#ff9a1f', btn: 'Keyingisi', cap: 'Har kuning quyoshdek iliq bo‘lsin, seni sevaman 🧡' },
+    { key: 'infinity', cam: 'shape', color: '#ff6fa2', btn: 'Keyingisi', cap: 'Muhabbatim senga cheksiz, hayotimning mazmuni sensan' },
+    { key: 'words', cam: 'shape', color: '#ff5c93', btn: 'Boshidan', cap: 'Umr bo‘yi yoningda bo‘laman 🌹' }
+  ];
+  var stage = 0, autoT = null, typeT = null;
+  var capEl = document.getElementById('cap'), btn = document.getElementById('go'), home = document.getElementById('home');
+
+  function typeCaption(text) {
+    clearInterval(typeT); capEl.textContent = '';
+    var chars = Array.from(text), i = 0;
+    if (!chars.length) return;
+    typeT = setInterval(function () {
+      i++; capEl.textContent = chars.slice(0, i).join('');
+      if (i >= chars.length) clearInterval(typeT);
+    }, 55);
+  }
+  function go(n) {
+    clearTimeout(autoT);
+    stage = n;
+    var st = stages[n];
+    morphTo(st.key);
+    document.documentElement.style.setProperty('--stage', st.color);
+    btn.textContent = st.btn;
+    home.hidden = n < 2;
+    typeCaption(st.cap);
+    if (n >= 1) {
+      var delay = n === 1 ? 7000 : Math.max(8000, st.cap.length * 55 + 4500);
+      autoT = setTimeout(function () { go(n >= 6 ? 2 : n + 1); }, delay);
+    }
+  }
+  btn.addEventListener('click', function () { go(stage >= 6 ? 0 : stage + 1); });
+  home.addEventListener('click', function () { go(0); });
+
+  /* ---------- Camera / interaction ---------- */
+  var startPos = new THREE.Vector3(0, 3.4, 8.2), endPos = new THREE.Vector3(), shapePos = new THREE.Vector3();
+  var spinY = 0, tiltX = 0, velY = 0, dragging = false, lastX = 0, lastY = 0;
+  function resize() {
+    var w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    uni.uH.value = h;
+    var fw = 2 * Math.tan(30 * Math.PI / 180) * camera.aspect;
+    var d = Math.min(7, Math.max(2.4, 3.6 / fw));
+    endPos.set(0, d * 0.22, d * 0.975);
+    shapePos.set(0, 0, Math.max(3.3, 4.7 / fw));
+  }
+  window.addEventListener('resize', resize); resize();
+
+  canvas.addEventListener('pointerdown', function (e) { dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!dragging || stage > 1) return;
+    velY = (e.clientX - lastX) * 0.005; spinY += velY;
+    tiltX = Math.max(-0.7, Math.min(0.7, tiltX + (e.clientY - lastY) * 0.004));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  function up() { dragging = false; }
+  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var clock = new THREE.Clock(), look = new THREE.Vector3(0, 0, 0), camPos = startPos.clone();
+  var spriteA = 0, T = 0;
+
+  function tick() {
+    var dt = Math.min(clock.getDelta(), 0.05); T += dt;
+    uni.uTime.value = T;
+    if (mix < 1) mix = Math.min(1, mix + dt / 2.8);
+    uni.uMix.value = mix;
+
+    var st = stages[stage];
+    var want = st.cam === 'far' ? startPos : st.cam === 'in' ? endPos : shapePos;
+    camPos.lerp(want, 1 - Math.exp(-dt * (st.cam === 'shape' ? 1.6 : 1.1)));
+    camera.position.copy(camPos); camera.lookAt(look);
+
+    var inside = camPos.distanceTo(startPos) / startPos.distanceTo(endPos);
+    if (st.cam === 'shape') {
+      var tgt = Math.round(spinY / (Math.PI * 2)) * Math.PI * 2 + (reduce ? 0 : Math.sin(T * 0.55) * 0.38);
+      spinY += (tgt - spinY) * (1 - Math.exp(-dt * 2.2));
+      tiltX += (0 - tiltX) * (1 - Math.exp(-dt * 2.2));
+      velY = 0;
+    } else {
+      if (!dragging) { velY *= 0.95; spinY += velY + dt * (reduce ? 0.02 : 0.08 + 0.25 * inside); }
+    }
+    group.rotation.y = spinY; group.rotation.x = tiltX;
+
+    var sa = stage === 1 ? Math.min(1, Math.max(0, (inside - 0.55) / 0.4)) : 0;
+    spriteA += (sa - spriteA) * (1 - Math.exp(-dt * 3));
+    textMat.opacity = spriteA; glowMat.opacity = spriteA * 0.9;
+
+    uni.uSize.value = stage <= 1 ? 0.024 * (1 - 0.3 * inside) : 0.03;
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+</script>
+
+</body></html>
